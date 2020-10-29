@@ -32,4 +32,16 @@ in a given amount of time or less.
 * Hints:
   Think of the best data structure to accommodate devices and connections and write your code accordingly.
   
-  
+---
+
+### Usage 
+
+```shell
+$ php run.php [CSV FILE] 
+```
+
+### Test with including sample
+
+```
+$ php run.php sample_data.csv 
+```
