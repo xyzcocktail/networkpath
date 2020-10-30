@@ -71,6 +71,10 @@ class Networkpath
         }
     }
 
+    /**
+     * @param null $data
+     * @return false|string[]
+     */
     public function validateInputData($data = null)
     {
         if ($data == null)
@@ -83,6 +87,12 @@ class Networkpath
         }
     }
 
+    /**
+     * @param $source
+     * @param $target
+     * @param $latency
+     * @return void|null
+     */
     public function findPath($source, $target, $latency)
     {
         // echo "********** findPath {$origin}, {$target}, {$latency} ********** \n";
@@ -92,23 +102,11 @@ class Networkpath
         }
         $this->direction = ($source < $target) ? "+" : "-";
 
-        // The shortest distance to all nodes starts with infinity...
         $this->latency = array_fill_keys(array_keys($this->pool), INF);
-        // ...except the start node
         $this->latency[$source] = 0;
 
-        // The previously visited nodes
         $this->previous = array_fill_keys(array_keys($this->pool), array());
 
-        // echo "--------------- pool \n";
-        // print_r($this->pool);
-        // echo "--------------- latency \n";
-        // print_r($this->latency);
-        // echo "--------------- previous \n";
-        // print_r($this->previous);
-        // echo "======================== \n";
-
-        // Process all nodes in order
         $this->queue = array($source => 0);
         while (!empty($this->queue)) {
             $this->queue = [$source => 0];
@@ -146,11 +144,6 @@ class Networkpath
         } else if (!empty($this->latency[$target]) && $this->latency[$target] > $latency)  {
             echo "- Path not found! \n\n";
         } else {
-//            echo "--------------- latency \n";
-//            print_r($this->latency);
-//            echo "--------------- previous \n";
-//            print_r($this->previous);
-
             $paths = [[$target]];
             for ($key = 0; isset($paths[$key]); ++$key) {
                 $path = $paths[$key];
