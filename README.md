@@ -36,13 +36,20 @@ in a given amount of time or less.
 
 ### Usage 
 
-```shell
+```bash
 $ composer install
 $ php run.php [CSV FILE] 
 ```
 
 ### Test with including sample
 
-```
+```bash
 $ php run.php sample_data.csv 
+```
+
+### Test with Docker
+
+```bash
+$ docker build -t app . 
+$ docker run --rm -it -v $(pwd):/app -w /app app composer install && php run.php sample_data.csv
 ```
