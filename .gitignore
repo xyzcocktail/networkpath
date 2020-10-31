@@ -1,0 +1,13 @@
+*.swp
+*.org
+*.log
+*.bak
+.idea/
+.project/
+.buildpath
+.DS_Store
+.vagrant/
+._*
+
+vendor/
+

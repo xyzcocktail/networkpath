@@ -37,6 +37,7 @@ in a given amount of time or less.
 ### Usage 
 
 ```shell
+$ composer install
 $ php run.php [CSV FILE] 
 ```
 

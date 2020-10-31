@@ -4,14 +4,9 @@ namespace Jay\Test;
 
 class Networkpath
 {
-
     protected $pool;
 
-    protected $latency;
-
-    protected $direction;
-
-    protected $queue;
+    private $nodes;
 
     /**
      * Networkpath constructor.
@@ -21,6 +16,38 @@ class Networkpath
     {
         if ($csvFile !== null) {
             $this->setPoolByCSV($csvFile);
+        }
+    }
+
+    /**
+     * @param null $csvFile
+     * @return bool
+     */
+    public function setPoolByCSV($csvFile = null)
+    {
+        if ($csvFile === null)
+            return false;
+        try {
+            $pool = [];
+            if (($handle = fopen($csvFile, "r")) !== false) {
+                while(($data = fgetcsv($handle, 1000, ",")) !== false) {
+                    $idxSrc     = trim($data[0]);
+                    $idxTgt     = trim($data[1]);
+                    $latency    = intval($data[2]);
+                    if (!isset($pool[$idxSrc])) {
+                        $pool[$idxSrc] = [$idxTgt => $latency];
+                    } else {
+                        $pool[$idxSrc][$idxTgt] = $latency;
+                    }
+                }
+                $this->setPool($pool);
+                return true;
+            } else {
+                return false;
+            }
+        } catch (Exception $e) {
+            echo "- Exception: {$e->getMessage()}";
+            return false;
         }
     }
 
@@ -40,41 +67,33 @@ class Networkpath
         $this->pool = $pool;
     }
 
-    /**
-     * @param null $csvFile
-     * @return bool
-     */
-    public function setPoolByCSV($csvFile = null)
+    public function setInitNodes()
     {
-        if ($csvFile === null)
-            return false;
-        try {
-            $pool = [];
-            if (($handle = fopen($csvFile, "r")) !== false) {
-                while(($data = fgetcsv($handle, 1000, ",")) !== false) {
-                    $idxSrc = trim($data[0]);
-                    $idxTgt = trim($data[1]);
-                    if (!isset($pool[$idxSrc])) {
-                        $pool[$idxSrc] = [$idxTgt => intval($data[2])];
-                    } else {
-                        $pool[$idxSrc][$idxTgt] = intval($data[2]);
+        $this->nodes = [];
+        if (!empty($this->pool)) {
+            foreach($this->pool as $v => $adj) {
+                $this->addNode(new Node($v));
+            }
+            foreach($this->pool as $v => $adj) {
+                if (!empty($adj)) {
+                    foreach($adj as $n => $latency) {
+                        $chk = $this->getNode($n);
+                        if (!$chk) $this->addNode(new Node($n));
                     }
                 }
-                $this->setPool($pool);
-                return true;
-            } else {
-                return false;
             }
-        } catch (Exception $e) {
-            echo "- Exception: {$e->getMessage()}";
-            return false;
+            foreach($this->pool as $v => $adj) {
+                $sNode = $this->getNode($v);
+                if ($sNode && !empty($adj)) {
+                    foreach($adj as $neighbor => $latency) {
+                        $tNode = $this->getNode($neighbor);
+                        if ($tNode) $sNode->connectTo($tNode, $latency);
+                    }
+                }
+            }
         }
     }
 
-    /**
-     * @param null $data
-     * @return false|string[]
-     */
     public function validateInputData($data = null)
     {
         if ($data == null)
@@ -87,78 +106,167 @@ class Networkpath
         }
     }
 
-    /**
-     * @param $source
-     * @param $target
-     * @param $latency
-     * @return void|null
-     */
-    public function findPath($source, $target, $latency)
+    public function addNode($node)
     {
-        // echo "********** findPath {$origin}, {$target}, {$latency} ********** \n";
-        if ($source == null || $target == null || $latency <= 0) {
-            echo "- Error: Please enter valid values \n";
-            return null;
-        }
-        $this->direction = ($source < $target) ? "+" : "-";
-
-        $this->latency = array_fill_keys(array_keys($this->pool), INF);
-        $this->latency[$source] = 0;
-
-        $this->previous = array_fill_keys(array_keys($this->pool), array());
-
-        $this->queue = array($source => 0);
-        while (!empty($this->queue)) {
-            $this->queue = [$source => 0];
-            while (!empty($this->queue)) {
-                // Process the closest vertex
-                $closest = array_search(min($this->queue), $this->queue);
-                if (!empty($this->pool[$closest])) {
-                    foreach ($this->pool[$closest] as $neighbor => $cost) {
-                        if (!isset($this->previous[$neighbor])) {
-                            $this->previous[$neighbor] = [$closest];
-                            $this->latency[$neighbor] = $this->latency[$closest] + $cost;
-                        }
-                        if (isset($this->latency[$neighbor])) {
-                            if ($this->latency[$closest] + $cost < $this->latency[$neighbor]) {
-                                // A shorter path was found
-                                $this->latency[$neighbor] = $this->latency[$closest] + $cost;
-                                $this->previous[$neighbor] = array($closest);
-                                $this->queue[$neighbor] = $this->latency[$neighbor];
-                            } else if ($this->latency[$closest] + $cost === $this->latency[$neighbor]) {
-                                // An equally short path was found
-                                $this->previous[$neighbor][] = $closest;
-                                $this->queue[$neighbor] = $this->latency[$neighbor];
-                            }
-                        }
-                    }
-                }
-                unset($this->queue[$closest]);
-            }
-        }
-
-        if ($source === $target) {
-            echo "- {$source} => 0 \n\n";
-        } else if (empty($this->previous[$target])) {
-            echo "- Path not found! \n\n";
-        } else if (!empty($this->latency[$target]) && $this->latency[$target] > $latency)  {
-            echo "- Path not found! \n\n";
-        } else {
-            $paths = [[$target]];
-            for ($key = 0; isset($paths[$key]); ++$key) {
-                $path = $paths[$key];
-                if (!empty($this->previous[$path[0]])) {
-                    foreach ($this->previous[$path[0]] as $previous) {
-                        $copy = $path;
-                        array_unshift($copy, $previous);
-                        $paths[] = $copy;
-                    }
-                    unset($paths[$key]);
-                }
-            }
-            echo join(" => ", array_values($paths)[0])." => ".$this->latency[$target]." \n\n";
-        }
-        return;
+        $this->nodes[] = $node;
     }
 
+    /**
+     * @param $name
+     * @return false|mixed
+     */
+    public function getNode($name, $create = false)
+    {
+        if (!empty($this->nodes)) {
+            foreach ($this->nodes as $node) {
+                if ($node->getName() == $name) {
+                    return $node;
+                }
+            }
+        }
+        return ($create === true) ? new Node($name) : false;
+    }
+
+    /**
+     * @return array
+     */
+    public function getNodes()
+    {
+        return $this->nodes;
+    }
+
+    public function findPath(Node $from, Node $to)
+    {
+        $from->makePrimary();
+        $to->setIsLast();
+
+        $current = $from;
+        $visited = [$from->getName() => $from];
+        $unvisited = $this->getAllNodeExcept($from);
+
+        while(true) {
+            $this->calculateNeighbours($current, $visited);
+
+            $current = $this->determineLowestUnvisited($unvisited, $to);
+            if ($current === null) {
+                throw new Exception('unable to determine highest unvisited');
+            }
+
+            unset($unvisited[$current->getName()]);
+            $visited[$current->getName()] = $current;
+
+            if ($current->getName() === $to->getName()) {
+                // found shortest path. return it
+                break;
+            }
+        }
+        return $to;
+    }
+
+    public function printPath(Node $sNode, Node $tNode, $latency = 0)
+    {
+        $totLatency = 0;
+        $results = [];
+        $current_node = $tNode;
+        $path = [];
+        while (true) {
+            $path[] = $current_node;
+            if ($current_node->getParentNodeForQuickestRoute() === null) {
+                break;
+            }
+            $new_node = $current_node->getParentNodeForQuickestRoute();
+
+            // find the link
+            foreach($new_node->getLinks() as $link) {
+                if ($link->getToNode() === $current_node) {
+                    $link->activate();
+                }
+            }
+            $current_node = $new_node;
+        }
+
+        foreach ($this->getNodes() as $key => $node) {
+            foreach ($node->getLinks() as $link) {
+                if ($link->isActive()) {
+                    $k = $node->getName();
+                    $results[$k] = [
+                        'Primary' => $node->getIsPrimary(),
+                        'To' => $link->getToNode()->getName(),
+                        'Latency' => $link->getLatency()
+                    ];
+                    $totLatency += intval($link->getLatency());
+                }
+            }
+        }
+
+        if ($sNode->getName() < $tNode->getName()) {
+            ksort($results);
+        } else {
+            krsort($results);
+        }
+        // print_r( $results );
+
+        if ($latency > 0 && $totLatency > $latency) {
+            echo "Path not found! \n";
+        } else {
+            $results[$tNode->getName()] = $tNode->getName();
+            $results[$totLatency] = $totLatency;
+            echo implode(" => ", array_keys($results));
+            echo "\n";
+        }
+    }
+
+    private function calculateNeighbours(Node $current, $visited = [])
+    {
+        // find the lowest weighted neighbour
+        $links = $current->getLinks();
+
+        //update the values of the neighbours
+        foreach ($links as $link) {
+            $toNode = $link->getToNode();
+            if ($current->getName() === $toNode->getName()) {
+                continue;
+            }
+            if (in_array($toNode->getName(), array_keys($visited))) {
+                continue;
+            }
+
+            $latency = $current->getTentativeLatency() + $link->getLatency();
+            if (null === $toNode->getTentativeLatency() || $latency < $toNode->getTentativeLatency()) {
+                $toNode->setTentativeLatency($latency);
+                $toNode->setParentNodeForQuickestRoute($current);
+            }
+        }
+    }
+
+    private function getAllNodeExcept(Node $current_node)
+    {
+        $set= [];
+        foreach ($this->nodes as $node) {
+            if ($node->getName() !== $current_node->getName()) {
+                $set[$node->getName()] = $node;
+            }
+        }
+        return $set;
+    }
+
+    private function determineLowestUnvisited($unvisited, Node $target_node)
+    {
+        /** @var Node $lowest_node */
+        $lowest_node = null;
+        foreach ($unvisited as $node) {
+            if ($node->getTentativeLatency() == null) {
+                continue;
+            }
+            if ($lowest_node === null) {
+                $lowest_node = $node;
+            } else if ($node->getTentativeLatency() <= $lowest_node->getTentativeLatency()) {
+                if ($node->getName() === $target_node->getName() ||
+                    $node->getTentativeLatency() < $lowest_node->getTentativeLatency()) {
+                    $lowest_node = $node;
+                }
+            }
+        }
+        return $lowest_node;
+    }
 }
