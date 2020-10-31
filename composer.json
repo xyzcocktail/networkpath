@@ -1,0 +1,21 @@
+{
+    "name": "jay/test",
+    "authors": [
+        {
+            "name": "Jay Jung",
+            "email": "jayjung@ezion.com.au"
+        }
+    ],
+    "config": {
+        "bin-dir": "bin"
+    },
+    "require": {},
+    "require-dev": {
+        "phpunit/phpunit": "^7"
+    },
+    "autoload": {
+        "classmap": [
+            "src/"
+        ]
+    }
+}

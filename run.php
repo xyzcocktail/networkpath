@@ -1,5 +1,8 @@
 <?php
-require_once "src/Networkpath.php";
+
+use \Jay\Test\Networkpath;
+
+require_once 'vendor/autoload.php';
 
 if (empty($argv) || count($argv) < 2) {
     echo "- Usage: php run.php [CSV FILE PATH] \n";
@@ -11,7 +14,7 @@ if (!file_exists($argv[1])) {
     exit;
 } else {
     try {
-        $networkPath = new \Jay\Test\Networkpath($argv[1]);
+        $networkPath = new Networkpath($argv[1]);
         if ($networkPath) {
             while(true) {
                 echo "***** Please enter a data (e.g - A F 1000 followed by ENTER key) ***** \n";
@@ -22,8 +25,16 @@ if (!file_exists($argv[1])) {
                     exit;
                 } else {
                     if (($data = $networkPath->validateInputData($line))) {
-                        $result = $networkPath->findPath(strtoupper($data[0]), strtoupper($data[1]), intval($data[2]));
-                        print_r($result);
+                        $networkPath->setInitNodes();
+                        $networkPath->findPath(
+                            $networkPath->getNode(strtoupper($data[0])),
+                            $networkPath->getNode(strtoupper($data[1]))
+                        );
+                        $networkPath->printPath(
+                            $networkPath->getNode(strtoupper($data[0])),
+                            $networkPath->getNode(strtoupper($data[1])),
+                            intval($data[2])
+                        );
                     } else {
                         echo "- Error: invalid input data! \n\n";
                     }
